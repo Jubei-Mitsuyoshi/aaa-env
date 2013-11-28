@@ -47,7 +47,7 @@ binlinks="aaa-common-functions \
 aaa-setup-build-env \
 aaa-setup-build-base"
 	
-hooklinks="D05deps A10change_distro.sh"
+hooklinks="D05deps"
 
 etclinks="aaa-master-config"
 
