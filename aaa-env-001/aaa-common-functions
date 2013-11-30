@@ -316,7 +316,7 @@ Block "creating/updating base pbuilder image"
 aaa_escape=0
 if [[ -e "$aaa_base_gz_dir/$aaa_base_gz" ]]; then
 	while [[ $aaa_escape -eq 0 ]]; do
-		pbuilder --update
+		pbuilder --update --override-config
 		if [[ ! $? -eq 0 ]]; then
 			Warn "pbuilder --update bugged out, mostly due to failed downloads"
 			Warn "hence going to try again, if thats not good for you ${aaa_ctrl_c} to quit"
@@ -327,7 +327,7 @@ if [[ -e "$aaa_base_gz_dir/$aaa_base_gz" ]]; then
 	done
 else
 	while [[ $aaa_escape -eq 0 ]]; do
-		pbuilder --create
+		pbuilder --create 
 		if [[ ! $? -eq 0 ]]; then
 			Warn "pbuilder --update bugged out, mostly due to failed downloads"
 			Warn "hence going to try again, if thats not good for you ${aaa_ctrl_c} to quit"
@@ -344,14 +344,14 @@ fi
 function ListDebs()
 {
 cd debian
-echo $(grep "Package" control | sed 's/Package: //')
+echo $(grep "Package" ./debian/control | sed 's/Package: //')
 
 
 }
 
 
 
-function PurgeMyRepo()
+function RemoveByName()
 {
 
 		#first argument repo basedir
@@ -359,7 +359,7 @@ function PurgeMyRepo()
 		
 Warn "removing all previous $3 packages from $2 in $1"
 for pack_name in $3; do
-	reprepro -Vb "$1"  --architecture $aaa_host_arch removematched $2 "*$pack_name*"  > /dev/null 2>&1
+	reprepro -Vb "$1" removematched $2 "*$pack_name*"  > /dev/null 2>&1
 done
 
 }
@@ -368,13 +368,13 @@ done
 function CleanMyRepo()
 {
 		#first argument repo basedir
-		#second argument -p purge all tag versions
+		#second argument -c clean all tag versions
 
 	
 	for file_base in `find . -maxdepth 1 -mindepth 1 -type f -name "*.deb"`; do 
 		local file_n1=${file_base#./}
-		[[ $2 == -p ]] || local file_n2=${file_n1%_*.*}
-		[[ $2 == -p ]] && local file_n2=${file_n1%%_*.*}
+		[[ $2 == -c ]] || local file_n2=${file_n1%_*.*}
+		[[ $2 == -c ]] && local file_n2=${file_n1%%_*.*}
 		
 			Debug "name=$file_n2 basedir=$1 purge=$2"
 			for dist in $aaa_extra_repos; do
@@ -384,6 +384,23 @@ function CleanMyRepo()
 			done
 				
 	done
+	
+
+}
+
+function IncludeToRepo()
+{
+		#first argument repo basedir
+		#second argument codename
+		#third argument clean
+
+		#check arches
+
+		CleanMyRepo "$1" $3
+		case "$1" in
+		 $aaa_work_repo_dir|$aaa_home_repo_dir) Test reprepro -Vb "$1" includedeb "$2" *.deb ;;
+											*) Test reprepro -Vb "$1" include "$2" *.changes ;;
+		esac
 	
 
 }
@@ -426,15 +443,7 @@ function PatchEm()
 		
 		Cinnamon) Test sed -i 's/;cinnamon-fallback-mount-helper//' ./files/usr/share/cinnamon-session/sessions/cinnamon.session
 							Test sed -i 's/nm-applet;//' ./files/usr/share/cinnamon-session/sessions/cinnamon.session ;;
-							
-		#winexe#########################################################################################################################################
-		
-		winexe) Debug ;;
-		
-		#nvidia-cuda-toolkit#########################################################################################################################################
-		
-		nvidia-cuda-toolkit) Debug ;;
-	#cat postinst > test
+						
 	
 	esac
  
@@ -461,28 +470,6 @@ rm -rf "$tmpdir"
 
 
 
-
-function FreshInstall()
-{
-
-apt-get update
-#apt-get dist-upgrade
-/etc/init.d/gdm3 stop > /dev/null 2>&1
-apt-get --no-upgrade --no-install-recommends install xinit
-apt-get --no-upgrade purge gdm3
-apt-get --no-upgrade purge "gnome-settings-daemon*"
-apt-get --no-upgrade purge "gnome-session*"
-apt-get --no-upgrade --no-install-recommends  install "cinnamon*" "muffin*" "cjs*" "nemo*"
-
-Info "chose muffin here in the next dialog"
-update-alternatives --config x-window-manager
-
-Info "chose cinnamon-session in the next dialog"
-update-alternatives --config x-session-manager
-
-
-Info "now type startx"
-}
 
 
 function SwitchDistro()
@@ -533,7 +520,7 @@ fi
 aaa_apt_cache_dir="$aaa_apt_cache_base_dir/$aaa_debian_distro"
 
 echo "MIRRORSITE=\"$aaa_mirror\"
-OTHERMIRROR=\"deb [trusted=yes] file://$aaa_localrepo_dir $aaa_work_repo main\"
+OTHERMIRROR=\"deb [trusted=yes] file://$aaa_work_repo_dir work main\"
 BINDMOUNTS=\"$aaa_bindmounts\"
 HOOKDIR=\"$aaa_pbuilder_hookdir\"
 EXTRAPACKAGES=\"$aaa_extra_packages\"
@@ -551,6 +538,97 @@ APTCACHEHARDLINK=$aaa_hardlink
 BASETGZ=\"$aaa_base_gz_dir/$aaa_base_gz\"
 BUILDPLACE=\"$aaa_build_location\"" > "$HOME/.pbuilderrc"
 
+}
+
+function ActivateRepo() {
+	
+	#$1 repo base dit
+	#$2 codenames
+	#$3 package download url
+	
+	#create repro dir struture by downloading , installing,  package
+	Block "fill $1 repo"
+	cd "$aaa_work_dir"
+	DownLoad "$3"
+	for codename in $2; do
+		#	reprepro -b "$aaa_work_repo_dir" list work *.deb
+		reprepro -b "$1" includedeb  $codename *.deb > /dev/null 2>&1
+	done
+	rm -rf *.deb
+	cd $HOME
+
+}
+
+function WriteRepo()
+{
+	#$1 repo base dir
+	#$2 list of codenames
+	#$3 list of arches
+	#$4 delete contents of repo dir before writing new
+	
+	if [[ $4 == "-r" ]]; then
+		Warn "repo cleaning was requested about to scrub the contents of $1 "
+		AnyKey
+		Test cd "$1" 
+		Test rm -fr `dir`
+	fi
+	MakeADir "$1/conf"
+	
+if [[ -e "$1/conf/distributions" ]]; then
+	Warn "$1/conf/distributions already exists"
+	Warn "backing up original and writing new"
+	mv "$1/conf/distributions"  "$1/conf/distributions.backup"
+	echo "#config writen by aaa, original config saved to $1/conf/distributions.back " > "$1/conf/distributions"
+else
+
+	Info "writing new $1/conf/distributions"
+	echo "#config writen by aaa, feel free to modify but dont fuck anything ! " > "$1/conf/distributions"
+fi
+
+
+aaa_tmp=""
+for codename in $2; do
+	case "$codename" in
+		unstable) aaa_suite="Suite: sid" ;;
+		testing) aaa_suite="Suite: jessie" ;;
+		kali) aaa_suite="Suite: wheezy" ;;
+		saucy) aaa_suite="Suite: ubuntu" ;;
+		*) aaa_suite="Suite: experimental" ;;		
+	esac
+
+	aaa_tmp=("Origin: aaa.$codename.org
+Label: aaa-$codename-local-repo
+Codename: $codename
+$aaa_suite
+Version: 1.0
+Architectures: $3
+Components: main
+Description: local custom repo for $codename packages
+$sign_with_marker
+
+$aaa_tmp")
+done
+
+Test echo "$aaa_tmp" > "$1/conf/distributions"
+
+Block "writing $1/conf/options"
+
+if [[ -e "$1/conf/options" ]]; then
+	Warn "$1/conf/options already exists"
+	Warn "backing up original and writing new"
+	mv "$1/conf/options"  "$1/conf/options.backup"
+	echo "#config writen by aaa, original config saved to $1/conf/options.back " > "$1/conf/options"
+else
+
+	Info "writing new $1/conf/options"
+	echo "#config writen by aaa, feel free to modify but dont fuck anything ! " > "$1/conf/options"
+fi
+Test echo "verbose
+basedir $1
+$PassPhraseMarker" >> "$1/conf/options"
+
+reprepro -b "$1" createsymlinks $2
+	
 }
 
 

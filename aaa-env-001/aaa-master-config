@@ -121,12 +121,6 @@ aaa_extra_build_opts="-sa -us -uc"
 ####################################
 
 ##########################################################
-#local repos, 
-aaa_extra_repos="testing unstable saucy kali"
-aaa_work_repo="work"
-##########################################################
-
-##########################################################
 
 ###############################
 #
@@ -135,7 +129,7 @@ aaa_extra_packages="apt-utils devscripts lsb-release"
 ###############################
 
 ########################################################################
-# on top of the default aaa_localrepo_dir
+# on top of the default aaa_home_repo_dir
 #space delimited list
 aaa_extra_bindmounts=""
 ########################################################################
@@ -189,15 +183,39 @@ aaa_ubuntu_keyring="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
 #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 ###############################
-#base repo dir
-aaa_localrepo_dir="/aaa-repo"
+#just leave unset to disable
+aaa_home_repo_dir="$HOME/aaa-home-repo"
 ###############################
 
 ###############################
-#mirror repo dir, used if in kind mode
-#just leave unset to disable kind mode
+#just leave unset to disable
 aaa_git_repo_dir="$HOME/git/github/aaa-debian-repo"
 ##############################
+
+###############################
+#just leave unset to disable
+aaa_work_repo_dir="$HOME/aaa-work-repo"
+###############################
+
+###############################
+#just leave unset to disable
+#aaa_extra_repo_dir="$HOME/*********"
+###############################
+
+##########################################################
+#local repo codenames, 
+aaa_home_codenames="testing unstable saucy kali"
+aaa_git_codenames="testing unstable saucy kali"
+aaa_work_codenames="work"
+#aaa_extra_codenames="*********"
+##########################################################
+
+#sort repo dirs, order is important <home git work ....any extras   
+aaa_repo_dir_list="$aaa_home_repo_dir $aaa_git_repo_dir $aaa_work_repo_dir $aaa_extra_repo_dir"
+
+
+############################## aaa-setup-build-env ####################################
+
 
 ###############################
 #new tag to identify packages
@@ -207,7 +225,7 @@ aaa_pkg_tag_kali="aaakali"
 aaa_pkg_tag_ubuntu="aaasaucy"
 ###############################
 
-
+########################################################################################
 
 ############################## aaa-build-cinnamon ##################################
 
@@ -259,8 +277,8 @@ aaa_jubei_git_url="git://github.com/Jubei-Mitsuyoshi"
 
 ############################## sort out final vars to pass --do not mod this unless you know what your doing--##################################
 
-#add default work repo for pbuilder
-aaa_extra_repos="$aaa_extra_repos $aaa_work_repo"
+#sort repo dirs, order is important <home git work ....any extras   
+aaa_repo_dir_list="$aaa_home_repo_dir $aaa_git_repo_dir $aaa_work_repo_dir $aaa_extra_repo_dir"
 
 
 case "$aaa_debian_distro" in
@@ -317,7 +335,7 @@ for bind_target in $aaa_extra_bindmounts; do
 	bind_target_space=" $bind_target"
 	aaa_tmp=("$aaa_tmp""$bind_target_space")
 done
-aaa_bindmounts=("$aaa_localrepo_dir""$aaa_tmp")
+aaa_bindmounts=("$aaa_work_repo_dir""$aaa_tmp")
 #possible extra debootstrapopt
 # -m$aaa_maintainer
 
