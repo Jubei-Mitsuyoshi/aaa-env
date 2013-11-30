@@ -141,6 +141,20 @@ InArray() {
 }
 
 
+##
+#  usage : in_array( $needle, $haystack )
+# return : 0 - found
+#          1 - not found
+##
+InList() {
+	local needle=$1; shift
+	local item
+	for item in $1; do
+		[[ $item = $needle ]] && return 0 # Found
+	done
+	return 1 # Not Found
+}
+
 
 
 function CheckMyDeps()
