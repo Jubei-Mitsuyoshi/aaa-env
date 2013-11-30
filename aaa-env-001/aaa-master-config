@@ -219,8 +219,8 @@ aaa_repo_dir_list="$aaa_home_repo_dir $aaa_git_repo_dir $aaa_work_repo_dir $aaa_
 
 ###############################
 #new tag to identify packages
-aaa_pkg_tag_testing="aaajessie"
-aaa_pkg_tag_unstable="aaasid"
+aaa_pkg_tag_testing="aaatesting"
+aaa_pkg_tag_unstable="aaaunstable"
 aaa_pkg_tag_kali="aaakali"
 aaa_pkg_tag_ubuntu="aaasaucy"
 ###############################

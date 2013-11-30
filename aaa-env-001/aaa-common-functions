@@ -98,6 +98,25 @@ function Debug()
 		fi
 }
 
+function DebugTest()
+{
+		if [[ $AAA_DEBUG == yes ]]; then
+			
+			echo -e "${bldpur}debug-->${bldwht}$@${txtrst}"
+			AnyKey
+			"$@"
+			if [[ ! $? -eq 0 ]]; then
+				echo -e "${bldpur}debug--> FAILED ---->${bldwht}$@${txtrst}"
+				for arg in $@; do
+					echo -e "$arg"
+				done
+			fi
+			
+		else
+			"$@" || Fuck "$@ failed"
+		fi
+}
+
 function MenuInactive()
 {
 	#argument 1 menu key
@@ -365,6 +384,51 @@ echo $(grep "Package" ./debian/control | sed 's/Package: //')
 
 
 
+function RemovePackage()
+{
+		#first argument repo basedir
+		#$2 reprepo codename
+		#$3 -c clean all tag versions
+
+	
+	for file_base in `find . -maxdepth 1 -mindepth 1 -type f -name "*.deb"`; do 
+		# strip
+		local file_n1=${file_base#./}
+		local full_pkg_name=${file_n1%*.deb}
+		local pkg_name=${file_n1%%_*.*}
+		
+		Debug "n1=$file_n1 n2=$file_n2 n3=$file_n3"
+		if [[ $3 == -c ]]; then
+			reprepro -Vb "$1" remove "$2" "$pkg_name"
+			if [[ $(reprepro -Vb "$1" list $2 "*$pack_name*") == "" ]]; then
+				return 0
+			else 
+				Warn "$pkg_name was not removed still exists"
+				Warn "reprepro -Vb $1 list $2 *$pack_name*"
+				reprepro -Vb "$1" list $2 "*$pack_name*"
+				AnyKey
+			fi
+			
+		else
+			reprepro -Vb "$1" removefilter "$2" "Package (% $pkg_name*), Version (% *$2)"
+			if [[ $(reprepro -Vb "$1" listfilter "$2" "Package (% $pkg_name*), Version (% *$2)") == "" ]]; then
+				return 0
+			else 
+				Warn "$full_pkg_name was not removed still exists"
+				Warn "reprepro -Vb $1 listfilter $2 Package (% $pkg_name*), Version (% *$2)"
+				reprepro -Vb "$1" listfilter "$2" "Package (% $pkg_name*), Version (% *$2)"
+				AnyKey
+			fi
+		fi
+		
+				
+	done
+	
+
+}
+
+
+
 function RemoveByName()
 {
 
@@ -373,51 +437,12 @@ function RemoveByName()
 		
 Warn "removing all previous $3 packages from $2 in $1"
 for pack_name in $3; do
-	reprepro -Vb "$1" removematched $2 "*$pack_name*"  > /dev/null 2>&1
+	  > /dev/null 2>&1
 done
 
 }
 
 
-function CleanMyRepo()
-{
-		#first argument repo basedir
-		#second argument -c clean all tag versions
-
-	
-	for file_base in `find . -maxdepth 1 -mindepth 1 -type f -name "*.deb"`; do 
-		local file_n1=${file_base#./}
-		[[ $2 == -c ]] || local file_n2=${file_n1%_*.*}
-		[[ $2 == -c ]] && local file_n2=${file_n1%%_*.*}
-		
-			Debug "name=$file_n2 basedir=$1 purge=$2"
-			for dist in $aaa_extra_repos; do
-				Warn "removing previous package ${bldblu}$file_n2${txtrst} from distro=${bldblu}$dist${txtrst} basedir=${bldblu}$1${txtrst}"
-				#reprepro -Vb "$1" list "$dist" "$file_n2"
-				reprepro -Vb "$1" remove "$dist" "$file_n2"
-			done
-				
-	done
-	
-
-}
-
-function IncludeToRepo()
-{
-		#first argument repo basedir
-		#second argument codename
-		#third argument clean
-
-		#check arches
-
-		CleanMyRepo "$1" $3
-		case "$1" in
-		 $aaa_work_repo_dir|$aaa_home_repo_dir) Test reprepro -Vb "$1" includedeb "$2" *.deb ;;
-											*) Test reprepro -Vb "$1" include "$2" *.changes ;;
-		esac
-	
-
-}
 
 
 function Stamp()
@@ -586,7 +611,7 @@ function WriteRepo()
 		Warn "repo cleaning was requested about to scrub the contents of $1 "
 		AnyKey
 		Test cd "$1" 
-		Test rm -fr `dir`
+		Test rm -fr `ls -d */`
 	fi
 	MakeADir "$1/conf"
 	
