@@ -389,6 +389,8 @@ function RemovePackage()
 		#first argument repo basedir
 		#$2 reprepo codename
 		#$3 -c clean all tag versions
+	#get source name, must be a better way !!!
+	 source_name=$(grep "Source" *.changes | sed 's/Source: //')
 
 	
 	for file_base in `find . -maxdepth 1 -mindepth 1 -type f -name "*.deb"`; do 
@@ -429,16 +431,35 @@ function RemovePackage()
 
 
 
-function RemoveByName()
-{
 
-		#first argument repo basedir
-		#second arg repo name (unstable kali etc)
-		
-Warn "removing all previous $3 packages from $2 in $1"
-for pack_name in $3; do
-	  > /dev/null 2>&1
-done
+
+function AutoInclude()
+{
+	#$1 clean flag
+	
+	cd "$aaa_build_result"
+	#get source name, must be a better way !!!
+	 local source_name=$(grep "Source" *.changes | sed 's/Source: //')
+	
+	if [[ $add_to_home_repo -eq 1 && ! -z "${aaa_home_repo_dir}" ]]; then
+		RemovePackage "$aaa_home_repo_dir" "$aaa_debian_distro" $1
+		Test reprepro -Vb "$aaa_home_repo_dir" includedeb "$aaa_debian_distro" *.deb
+	fi
+	
+	if [[ $add_to_git_repo -eq 1 && ! -z "${aaa_git_repo_dir}" ]]; then
+		RemovePackage "$aaa_git_repo_dir" "$aaa_debian_distro" $1
+		if [[ $(reprepro -Vb "$aaa_git_repo_dir" list "$aaa_debian_distro" "$source_name" | grep 'source') ]]; then
+			Warn "Previous source found--- only including debs to git repo"
+			Test reprepro -Vb "$aaa_git_repo_dir" includedeb "$aaa_debian_distro" *.deb
+		else
+			Test reprepro -Vb "$aaa_git_repo_dir" include "$aaa_debian_distro" *.changes
+		fi
+	fi
+	
+	if [[ $add_to_work_repo -eq 1 && ! -z  "$aaa_work_repo_dir" ]]; then
+		RemovePackage "$aaa_work_repo_dir" work -c
+		Test reprepro -Vb "$aaa_work_repo_dir" includedeb work *.deb
+	fi
 
 }
 
