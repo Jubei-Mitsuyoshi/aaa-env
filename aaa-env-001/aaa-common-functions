@@ -101,9 +101,6 @@ function Debug()
 function DebugTest()
 {
 		if [[ $AAA_DEBUG == yes ]]; then
-			
-			echo -e "${bldpur}debug-->${bldwht}$@${txtrst}"
-			AnyKey
 			"$@"
 			if [[ ! $? -eq 0 ]]; then
 				echo -e "${bldpur}debug--> FAILED ---->${bldwht}$@${txtrst}"
@@ -111,7 +108,6 @@ function DebugTest()
 					echo -e "$arg"
 				done
 			fi
-			
 		else
 			"$@" || Fuck "$@ failed"
 		fi
@@ -312,28 +308,21 @@ function CleanMyBuildArea()
 dir_exists=0
 if [[ -d "$aaa_work_dir" ]]; then
 	Warn "$aaa_work_dir already exists"
-	dir_exists=1
+	Warn "i need to clean it out sorry"
+	rm -rf "$aaa_work_dir"
 fi
 
 if [[ -d "$aaa_build_location" ]]; then
 	Warn "$aaa_build_location already exists"
-	dir_exists=1
+	Warn "i need to clean it out sorry"
+	rm -rf "$aaa_build_location"
 fi
 
 if [[ -d "$aaa_build_result" ]]; then
 	Warn "$aaa_build_result already exists"
-	dir_exists=1
-fi
-
-if [[ "$dir_exists" -eq 1 ]]; then
-	Warn "i need to clean it out"
-	Warn "if thats not good for you ${aaa_ctrl_c} to quit"
-	AnyKey
-	rm -rf "$aaa_work_dir"
-	rm -rf "$aaa_build_location"
+	Warn "i need to clean it out sorry"
 	rm -rf "$aaa_build_result"
 fi
-		
 
 MakeADir "$aaa_build_location"
 MakeADir "$aaa_work_dir"
@@ -393,29 +382,34 @@ function RemovePackage()
 	 source_name=$(grep "Source" *.changes | sed 's/Source: //')
 
 	
-	for file_base in `find . -maxdepth 1 -mindepth 1 -type f -name "*.deb"`; do 
+	for file_base in `ls *.deb`; do 
 		# strip
-		local file_n1=${file_base#./}
-		local full_pkg_name=${file_n1%*.deb}
-		local pkg_name=${file_n1%%_*.*}
+		local full_pkg_name=${file_base%*_*}
+		local pkg_name=${file_base%%_*.*}
 		
-		Debug "n1=$file_n1 n2=$file_n2 n3=$file_n3"
+		Debug "full_pkg_name=$full_pkg_name pkg_name=$pkg_name \$3=$3"
 		if [[ $3 == -c ]]; then
+			Info "Removing all versions of $pkg_name from basedir=$1 codename=$2,,-c flag given"
+			Debug "\$1=$1 \$2=$2 "
 			reprepro -Vb "$1" remove "$2" "$pkg_name"
-			if [[ $(reprepro -Vb "$1" list $2 "*$pack_name*") == "" ]]; then
+			local list_clean=$(reprepro -Vb "$1" list $2 "*$pack_name*")
+			Debug $list_clean
+			if [[ $list_clean == "" ]]; then
+				Debug
 				return 0
 			else 
 				Warn "$pkg_name was not removed still exists"
 				Warn "reprepro -Vb $1 list $2 *$pack_name*"
-				reprepro -Vb "$1" list $2 "*$pack_name*"
+				reprepro -Vb "$1" list $2 "$pack_name"
 				AnyKey
 			fi
 			
 		else
+			Info "Removing specific version of $full_pkg_name from basedir=$1 codename=$2 ,,-c flag NOT given"
 			reprepro -Vb "$1" removefilter "$2" "Package (% $pkg_name*), Version (% *$2)"
-			if [[ $(reprepro -Vb "$1" listfilter "$2" "Package (% $pkg_name*), Version (% *$2)") == "" ]]; then
-				return 0
-			else 
+			local list=$(reprepro -Vb "$1" listfilter "$2" "Package (% $pkg_name*), Version (% *$2)")
+			Debug "listfilter is " "$local list"
+			if [[ $list != "" ]]; then
 				Warn "$full_pkg_name was not removed still exists"
 				Warn "reprepro -Vb $1 listfilter $2 Package (% $pkg_name*), Version (% *$2)"
 				reprepro -Vb "$1" listfilter "$2" "Package (% $pkg_name*), Version (% *$2)"
@@ -437,28 +431,39 @@ function AutoInclude()
 {
 	#$1 clean flag
 	
-	cd "$aaa_build_result"
 	#get source name, must be a better way !!!
 	 local source_name=$(grep "Source" *.changes | sed 's/Source: //')
+	 Debug "source_name=$source_name add_to_home_repo=$add_to_home_repo aaa_debian_distro=$aaa_debian_distro"
 	
-	if [[ $add_to_home_repo -eq 1 && ! -z "${aaa_home_repo_dir}" ]]; then
+	if [[ $add_to_home_repo -eq 1 ]]; then
 		RemovePackage "$aaa_home_repo_dir" "$aaa_debian_distro" $1
 		Test reprepro -Vb "$aaa_home_repo_dir" includedeb "$aaa_debian_distro" *.deb
 	fi
 	
-	if [[ $add_to_git_repo -eq 1 && ! -z "${aaa_git_repo_dir}" ]]; then
+	Debug "source_name=$source_name add_to_git_repo=$add_to_git_repo aaa_debian_distro=$aaa_debian_distro"
+	
+	if [[ $add_to_git_repo -eq 1 ]]; then
 		RemovePackage "$aaa_git_repo_dir" "$aaa_debian_distro" $1
-		if [[ $(reprepro -Vb "$aaa_git_repo_dir" list "$aaa_debian_distro" "$source_name" | grep 'source') ]]; then
+		local is_source=$(reprepro -Vb "$aaa_git_repo_dir" list "$aaa_debian_distro" "$source_name" | grep 'source')
+		Debug "check for source is" "$is_source"
+		if [[ $is_source != "" ]]; then
 			Warn "Previous source found--- only including debs to git repo"
 			Test reprepro -Vb "$aaa_git_repo_dir" includedeb "$aaa_debian_distro" *.deb
+			Debug
 		else
+			Info "NO previous source found--- including everything in .changes file"
 			Test reprepro -Vb "$aaa_git_repo_dir" include "$aaa_debian_distro" *.changes
+			Debug
 		fi
 	fi
 	
-	if [[ $add_to_work_repo -eq 1 && ! -z  "$aaa_work_repo_dir" ]]; then
+	Debug "source_name=$source_name add_to_work_repo=$add_to_work_repo aaa_debian_distro=$aaa_debian_distro"
+	
+	if [[ $add_to_work_repo -eq 1 ]]; then
 		RemovePackage "$aaa_work_repo_dir" work -c
+		Debug
 		Test reprepro -Vb "$aaa_work_repo_dir" includedeb work *.deb
+		Debug
 	fi
 
 }
