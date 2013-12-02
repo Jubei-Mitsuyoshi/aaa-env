@@ -394,10 +394,7 @@ function RemovePackage()
 			reprepro -Vb "$1" remove "$2" "$pkg_name"
 			local list_clean=$(reprepro -Vb "$1" list $2 "*$pack_name*")
 			Debug $list_clean
-			if [[ $list_clean == "" ]]; then
-				Debug
-				return 0
-			else 
+			if [[ $list_clean != "" ]]; then
 				Warn "$pkg_name was not removed still exists"
 				Warn "reprepro -Vb $1 list $2 *$pack_name*"
 				reprepro -Vb "$1" list $2 "$pack_name"
