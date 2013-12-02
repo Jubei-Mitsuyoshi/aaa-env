@@ -372,6 +372,25 @@ echo $(grep "Package" ./debian/control | sed 's/Package: //')
 }
 
 
+function UpdateReadme()
+{
+if [[ -d "$aaa_git_repo_dir" ]]; then
+	
+	sed -i  '/^============$/,$d' "$aaa_git_repo_dir/README.md"
+	echo -e "============\n"  >> "$aaa_git_repo_dir/README.md"
+	
+	echo "Kali Packages"  >> "$aaa_git_repo_dir/README.md"
+	echo "============="  >> "$aaa_git_repo_dir/README.md"
+	sed '/^Installed/,/^Description/d' ./dists/kali/main/binary-amd64/Packages >> "$aaa_git_repo_dir/README.md"
+	
+	echo "Unstable Packages"  >> "$aaa_git_repo_dir/README.md"
+	echo "================="  >> "$aaa_git_repo_dir/README.md"
+	sed '/^Installed/,/^Description/d' ./dists/unstable/main/binary-amd64/Packages >> "$aaa_git_repo_dir/README.md"
+fi	
+	
+}
+
+
 
 function RemovePackage()
 {
@@ -452,6 +471,7 @@ function AutoInclude()
 			Test reprepro -Vb "$aaa_git_repo_dir" include "$aaa_debian_distro" *.changes
 			Debug
 		fi
+		UpdateReadme
 	fi
 	
 	Debug "source_name=$source_name add_to_work_repo=$add_to_work_repo aaa_debian_distro=$aaa_debian_distro"
@@ -694,5 +714,6 @@ $PassPhraseMarker" >> "$1/conf/options"
 reprepro -b "$1" createsymlinks $2
 	
 }
+
 
 
