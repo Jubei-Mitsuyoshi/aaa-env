@@ -1,0 +1,16 @@
+Source: aaa-env
+Section: devel
+Priority: optional
+Maintainer: Jubei Mitsuyoshi <jubei.house.of.five.masters@gmail.com>
+Build-Depends: debhelper (>= 9.0.0)
+Standards-Version: 3.9.4
+Homepage: https://github.com/Jubei-Mitsuyoshi/aaa-build-scripts
+#Vcs-Git: git://git.debian.org/collab-maint/archlinux-pacman.git
+#Vcs-Browser: http://git.debian.org/?p=collab-maint/archlinux-pacman.git;a=summary
+
+Package: aaa-env
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, reprepro, pbuilder
+Description: simple bash scripts that setup
+the aaa build environment
+ 
