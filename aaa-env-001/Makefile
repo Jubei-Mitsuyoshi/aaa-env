@@ -1,20 +1,14 @@
 VER=1
 
-CONFDIR = /usr/share/aaa
+CONFDIR = /usr/aaa
 
 BINPROGS = \
-	aaa-build \
-	aaa-build-cinnamon-pbuilder-git \
-	aaa-build-cinnamon-pbuilder-release \
-	aaa-build-compiz-emerald \
 	aaa-common-functions \
 	aaa-setup-build-env \
-	aaa-setup-tmpfs
+	aaa-setup-build-base
 	
 PATCHES = \
-	remove_elevated_privelages_banner.patch \
-	142DPI.patch \
-	convert_to_debian.patch
+	remove_elevated_privelages_banner.patch
 	
 HOOKS = \
 	D05deps
@@ -28,7 +22,7 @@ install:
 	install -dm755 $(DESTDIR)$(CONFDIR)/pbuilder
 	install -dm755 $(DESTDIR)$(CONFDIR)/pbuilder/hooks
 	#install conf files
-	install -m755 aaa-master-config $(DESTDIR)$(CONFDIR)/aaa-master-config
+	install -m755 aaa-master-config $(DESTDIR)/etc/aaa-master-config
 	
 	#install patches
 	install -m744 $(PATCHES) $(DESTDIR)$(CONFDIR)/patches

@@ -381,11 +381,11 @@ if [[ -d "$aaa_git_repo_dir" ]]; then
 	
 	echo "Kali Packages"  >> "$aaa_git_repo_dir/README.md"
 	echo "============="  >> "$aaa_git_repo_dir/README.md"
-	sed '/^Installed/,/^Description/d' ./dists/kali/main/binary-amd64/Packages >> "$aaa_git_repo_dir/README.md"
+	sed '/^Installed/,/^Description/d' "$aaa_git_repo_dir/dists/kali/main/binary-amd64/Packages" >> "$aaa_git_repo_dir/README.md"
 	
 	echo "Unstable Packages"  >> "$aaa_git_repo_dir/README.md"
 	echo "================="  >> "$aaa_git_repo_dir/README.md"
-	sed '/^Installed/,/^Description/d' ./dists/unstable/main/binary-amd64/Packages >> "$aaa_git_repo_dir/README.md"
+	sed '/^Installed/,/^Description/d' "$aaa_git_repo_dir/dists/unstable/main/binary-amd64/Packages" >> "$aaa_git_repo_dir/README.md"
 fi	
 	
 }
