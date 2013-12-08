@@ -51,6 +51,9 @@ readonly txtrst txtbld bldblu bldgrn bldred bldylw txtred txtgrn txtylw txtblu t
 	aaa_any_other_key="${bldblu} ANY OTHER KEY ${bldwht}"
 	aaa_ctrl_c="${bldcyn} CTRL-C ${bldwht}"
 
+#exported vars
+
+git_bdate=$(date +%Y%m%d%)
 
 
 # dialog functions *********************************************************************************************************************************************
