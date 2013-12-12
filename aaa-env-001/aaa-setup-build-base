@@ -51,9 +51,6 @@ if [ -r $HOME/.aaa_settings ]; then
   . $HOME/.aaa_settings
 fi
 
-export AAA_DEBIAN_DISTRO=""
-export AAA_SUPRESS_LOCAL_PBUILDERRC="yes"
-
 
 #source config
 if [[ -e /etc/aaa-master-config ]]; then
@@ -70,7 +67,7 @@ fi
 
 #check script dependencies
 CheckMyDeps "reprepro pbuilder cat grep gpg free"
-
+rm -f "$HOME/.pbuilderrc"
 
 Block "setup gpg key"
 if [[ ! -e "$HOME/.gnupg/trustedkeys.gpg" ]]; then

@@ -47,7 +47,7 @@ binlinks="aaa-common-functions \
 aaa-setup-build-env \
 aaa-setup-build-base"
 	
-hooklinks="D05deps"
+hooklinks="D05deps B92test-pkg"
 
 etclinks="aaa-master-config"
 

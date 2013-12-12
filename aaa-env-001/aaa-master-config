@@ -91,8 +91,8 @@ aaa_base_gz_dir="/var/cache/pbuilder"
 ######################################
 
 ######################################################
-#aaa_debian_distro="testing"
-aaa_debian_distro="unstable"
+#default distro
+aaa_default_distro="unstable"
 #aaa_debian_distro="kali"
 ######################################################
 
@@ -125,7 +125,7 @@ aaa_extra_build_opts="-sa -us -uc"
 ###############################
 #
 #space delimited list
-aaa_extra_packages="apt-utils devscripts lsb-release"
+aaa_extra_packages="apt-utils"
 ###############################
 
 ########################################################################
@@ -185,33 +185,20 @@ aaa_ubuntu_keyring="/usr/share/keyrings/ubuntu-archive-keyring.gpg"
 ###############################
 #just leave unset to disable
 aaa_home_repo_dir="$HOME/aaa-home-repo"
+aaa_home_repo_codename=home
 ###############################
 
 ###############################
 #just leave unset to disable
 aaa_git_repo_dir="$HOME/git/github/aaa-debian-repo"
+aaa_git_repo_codename=public
 ##############################
 
 ###############################
 #just leave unset to disable
 aaa_work_repo_dir="$HOME/aaa-work-repo"
+aaa_work_repo_codename=work
 ###############################
-
-###############################
-#just leave unset to disable
-#aaa_extra_repo_dir="$HOME/*********"
-###############################
-
-##########################################################
-#local repo codenames, 
-aaa_home_codenames="testing unstable saucy kali"
-aaa_git_codenames="testing unstable saucy kali"
-aaa_work_codenames="work"
-#aaa_extra_codenames="*********"
-##########################################################
-
-#sort repo dirs, order is important <home git work ....any extras   
-aaa_repo_dir_list="$aaa_home_repo_dir $aaa_git_repo_dir $aaa_work_repo_dir $aaa_extra_repo_dir"
 
 
 ############################## aaa-setup-build-env ####################################
@@ -219,11 +206,13 @@ aaa_repo_dir_list="$aaa_home_repo_dir $aaa_git_repo_dir $aaa_work_repo_dir $aaa_
 
 ###############################
 #new tag to identify packages
-aaa_pkg_tag_testing="aaatesting"
-aaa_pkg_tag_unstable="aaaunstable"
-aaa_pkg_tag_kali="aaakali"
-aaa_pkg_tag_ubuntu="aaasaucy"
+aaa_pkg_tag_testing="testing"
+aaa_pkg_tag_unstable="unstable"
+aaa_pkg_tag_kali="kali"
+aaa_pkg_tag_ubuntu="saucy"
 ###############################
+
+aaa_failed_build_log_dir="/etc/aaa/pbuilder/aaa-failed-build-logs"
 
 ########################################################################################
 
@@ -244,20 +233,23 @@ aaa_cinnamon_sources_git="$HOME/cinnamon-git"
 aaa_mint_git_url="git://github.com/linuxmint"
 ##########################################################
 
-##########################################################
-#list of cinnamon packages that must be built from git since
-#there are no git releases, or you can chose to build a git
-#package instead of a relese version in which case you would
-#MOVE the package name from release list to git list
-#as usual order is important
-aaa_cinnamon_git_list="cinnamon-themes nemo-extensions"
-##########################################################
 
 ##########################################################
-#list of cinnamon release packages, order is very important and must be preserved
+#list of cinnamon packages, order is very important and must be preserved
 #note cinnamon is listed in lowere case wheras the actual git name is Cinnamon
 #this is deliberate !
-aaa_cinnamon_release_list="cinnamon-translations cinnamon-desktop cjs nemo cinnamon-settings-daemon cinnamon-session muffin cinnamon-control-center Cinnamon cinnamon-bluetooth cinnamon-screensaver"
+aaa_cinnamon_list="cinnamon-translations \
+cinnamon-desktop \
+cjs \
+nemo \
+cinnamon-settings-daemon \
+cinnamon-session muffin \
+cinnamon-control-center \
+Cinnamon \
+cinnamon-bluetooth \
+cinnamon-screensaver \
+cinnamon-themes \
+nemo-extensions"
 ##########################################################
 
 
@@ -277,9 +269,7 @@ aaa_jubei_git_url="git://github.com/Jubei-Mitsuyoshi"
 
 ############################## sort out final vars to pass --do not mod this unless you know what your doing--##################################
 
-#sort repo dirs, order is important <home git work ....any extras   
-aaa_repo_dir_list="$aaa_home_repo_dir $aaa_git_repo_dir $aaa_work_repo_dir $aaa_extra_repo_dir"
-
+aaa_debian_distro="$aaa_default_distro"
 
 case "$aaa_debian_distro" in
 
@@ -343,7 +333,6 @@ aaa_bindmounts=("$aaa_work_repo_dir""$aaa_tmp")
 
 export AAA_HOST_ARCH=${ARCH:="$(dpkg --print-architecture)"}
 export DEBEMAIL="$aaa_maintainer"
-export DEBFULLNAME="${aaa_maintainer% <*}"
 
 aaa_apt_cache_dir="$aaa_apt_cache_base_dir/$aaa_debian_distro"
 

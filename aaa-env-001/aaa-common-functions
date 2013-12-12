@@ -51,9 +51,8 @@ readonly txtrst txtbld bldblu bldgrn bldred bldylw txtred txtgrn txtylw txtblu t
 	aaa_any_other_key="${bldblu} ANY OTHER KEY ${bldwht}"
 	aaa_ctrl_c="${bldcyn} CTRL-C ${bldwht}"
 
-#exported vars
 
-git_bdate=$(date +%Y%m%d%)
+git_bdate=$(date +%Y%m%d)
 
 
 # dialog functions *********************************************************************************************************************************************
@@ -384,58 +383,48 @@ if [[ -d "$aaa_git_repo_dir" ]]; then
 	
 	echo "Kali Packages"  >> "$aaa_git_repo_dir/README.md"
 	echo "============="  >> "$aaa_git_repo_dir/README.md"
-	sed '/^Installed/,/^Description/d' "$aaa_git_repo_dir/dists/kali/main/binary-amd64/Packages" >> "$aaa_git_repo_dir/README.md"
+	sed '/^Installed/,/^Description/d' "$aaa_git_repo_dir/dists/public/kali/binary-amd64/Packages" >> "$aaa_git_repo_dir/README.md"
+	sed '/^Installed/,/^Description/d' "$aaa_git_repo_dir/dists/public/kaligit/binary-amd64/Packages" >> "$aaa_git_repo_dir/README.md"
 	
 	echo "Unstable Packages"  >> "$aaa_git_repo_dir/README.md"
 	echo "================="  >> "$aaa_git_repo_dir/README.md"
-	sed '/^Installed/,/^Description/d' "$aaa_git_repo_dir/dists/unstable/main/binary-amd64/Packages" >> "$aaa_git_repo_dir/README.md"
+	sed '/^Installed/,/^Description/d' "$aaa_git_repo_dir/dists/public/unstable/binary-amd64/Packages" >> "$aaa_git_repo_dir/README.md"
+	sed '/^Installed/,/^Description/d' "$aaa_git_repo_dir/dists/public/unstablegit/binary-amd64/Packages" >> "$aaa_git_repo_dir/README.md"
 fi	
 	
 }
 
 
 
-function RemovePackage()
+function RemovePackages()
 {
 		#first argument repo basedir
-		#$2 reprepo codename
-		#$3 -c clean all tag versions
-	#get source name, must be a better way !!!
-	 source_name=$(grep "Source" *.changes | sed 's/Source: //')
-
+		#$2 codename
+	
 	
 	for file_base in `ls *.deb`; do 
 		# strip
 		local full_pkg_name=${file_base%*_*}
 		local pkg_name=${file_base%%_*.*}
 		
-		Debug "full_pkg_name=$full_pkg_name pkg_name=$pkg_name \$3=$3"
-		if [[ $3 == -c ]]; then
-			Info "Removing all versions of $pkg_name from basedir=$1 codename=$2,,-c flag given"
-			Debug "\$1=$1 \$2=$2 "
-			reprepro -Vb "$1" remove "$2" "$pkg_name"
-			local list_clean=$(reprepro -Vb "$1" list $2 "*$pack_name*")
-			Debug $list_clean
+		Info "Removing $pkg_name from basedir=$1 codename=$2 component=$aaa_component"
+		Info "full_pkg_name=$full_pkg_name pkg_name=$pkg_name"
+		
+		if [[ $1 == "$aaa_work_repo_dir" ]]; then
+			reprepro -Vb "$1" remove "$aaa_work_repo_codename" "$pkg_name"
+			local list_clean=$(reprepro -Vb "$1" list "$aaa_work_repo_codename" "$pkg_name")
 			if [[ $list_clean != "" ]]; then
-				Warn "$pkg_name was not removed still exists"
-				Warn "reprepro -Vb $1 list $2 *$pack_name*"
-				reprepro -Vb "$1" list $2 "$pack_name"
+				Warn "$pkg_name was not removed from work repo ,still exists....$list_clean"
 				AnyKey
 			fi
-			
 		else
-			Info "Removing specific version of $full_pkg_name from basedir=$1 codename=$2 ,,-c flag NOT given"
-			reprepro -Vb "$1" removefilter "$2" "Package (% $pkg_name*), Version (% *$2)"
-			local list=$(reprepro -Vb "$1" listfilter "$2" "Package (% $pkg_name*), Version (% *$2)")
-			Debug "listfilter is " "$local list"
-			if [[ $list != "" ]]; then
-				Warn "$full_pkg_name was not removed still exists"
-				Warn "reprepro -Vb $1 listfilter $2 Package (% $pkg_name*), Version (% *$2)"
-				reprepro -Vb "$1" listfilter "$2" "Package (% $pkg_name*), Version (% *$2)"
+			reprepro -Vb "$1" -C "$aaa_component" remove "$2" "$pkg_name"
+			local list_clean=$(reprepro -Vb "$1" -C "$aaa_component" list "$2" "$pkg_name")
+			if [[ $list_clean != "" ]]; then
+				Warn "$pkg_name was not removed still exists....$list_clean"
 				AnyKey
 			fi
 		fi
-		
 				
 	done
 	
@@ -446,59 +435,43 @@ function RemovePackage()
 
 
 
-function AutoInclude()
+function AutoIncludeHome()
 {
-	#$1 clean flag
 	
-	#get source name, must be a better way !!!
-	 local source_name=$(grep "Source" *.changes | sed 's/Source: //')
-	 Debug "source_name=$source_name add_to_home_repo=$add_to_home_repo aaa_debian_distro=$aaa_debian_distro"
-	
-	if [[ $add_to_home_repo -eq 1 ]]; then
-		RemovePackage "$aaa_home_repo_dir" "$aaa_debian_distro" $1
-		Test reprepro -Vb "$aaa_home_repo_dir" includedeb "$aaa_debian_distro" *.deb
-	fi
-	
-	Debug "source_name=$source_name add_to_git_repo=$add_to_git_repo aaa_debian_distro=$aaa_debian_distro"
-	
-	if [[ $add_to_git_repo -eq 1 ]]; then
-		RemovePackage "$aaa_git_repo_dir" "$aaa_debian_distro" $1
-		local is_source=$(reprepro -Vb "$aaa_git_repo_dir" list "$aaa_debian_distro" "$source_name" | grep 'source')
-		Debug "check for source is" "$is_source"
-		if [[ $is_source != "" ]]; then
-			Warn "Previous source found--- only including debs to git repo"
-			Test reprepro -Vb "$aaa_git_repo_dir" includedeb "$aaa_debian_distro" *.deb
-			Debug
-		else
-			Info "NO previous source found--- including everything in .changes file"
-			Test reprepro -Vb "$aaa_git_repo_dir" include "$aaa_debian_distro" *.changes
-			Debug
-		fi
-		UpdateReadme
-	fi
-	
-	Debug "source_name=$source_name add_to_work_repo=$add_to_work_repo aaa_debian_distro=$aaa_debian_distro"
-	
-	if [[ $add_to_work_repo -eq 1 ]]; then
-		RemovePackage "$aaa_work_repo_dir" work -c
-		Debug
-		Test reprepro -Vb "$aaa_work_repo_dir" includedeb work *.deb
-		Debug
-	fi
+	RemovePackages "$aaa_home_repo_dir" "$aaa_home_repo_codename"
+	Test reprepro -Vb "$aaa_home_repo_dir" -C "$aaa_component" includedeb "$aaa_home_repo_codename" *.deb
+			
 
 }
 
 
+function AutoIncludeWork()
+{
+	RemovePackages "$aaa_work_repo_dir" "$aaa_work_repo_codename"
+	Test reprepro -Vb "$aaa_work_repo_dir" includedeb "$aaa_work_repo_codename" *.deb
+
+}
 
 
-function Stamp()
+function AutoIncludeGit()
 {
 	
-	local version=$(dpkg-parsechangelog --show-field Version)
-
-	 dch -v "$version-$aaa_pkg_tag" --force-distribution --distribution "$aaa_debian_distro" "this change is an automated stamp of the package to show which distro it was built under , no changes are made except version number addition"
- 
+	local source_name=$(grep "Source" *.changes | sed 's/Source: //')
+	 Debug "source_name=$source_name aaa_debian_distro=$aaa_debian_distro"
 	
+		RemovePackages "$aaa_git_repo_dir" "$aaa_git_repo_codename"
+		local is_source=$(reprepro -Vb "$aaa_git_repo_dir" -C "$aaa_component" list "$aaa_git_repo_codename" "$source_name" | grep 'source')
+		Debug "check for source is" "$is_source"
+		if [[ $is_source != "" ]]; then
+			Warn "Previous source found--- only including debs to git repo"
+			Test reprepro -Vb "$aaa_git_repo_dir" -C "$aaa_component" includedeb "$aaa_git_repo_codename" *.deb
+			Debug
+		else
+			Info "NO previous source found--- including everything in .changes file"
+			Test reprepro -Vb "$aaa_git_repo_dir" --ignore=wrongdistribution -C "$aaa_component" include "$aaa_git_repo_codename" *.changes
+			Debug
+		fi
+		UpdateReadme
 }
 
 
@@ -561,27 +534,32 @@ function SwitchDistro()
 {
 	Info "Switching distro to $1"
 	aaa_debian_distro="$1"
+	
+	
+	if [[ -r "$HOME/.pbuilderrc" ]]; then
+		Info "found $HOME/.pbuilderrc from a previous run i hope !!!"
+		if [[ $(grep 'DISTRIBUTION=' "$HOME/.pbuilderrc" | sed 's/DISTRIBUTION=//') == "$1" ]]; then
+			Info "$HOME/.pbuilderrc already set for $1, no need to switch"
+			return 0
+		fi
+	fi
+
 
 case "$aaa_debian_distro" in
 
 	kali) aaa_mirror="$aaa_kali_mirror" 
-		aaa_pkg_tag="$aaa_pkg_tag_kali"
 		aaa_base_components="main contrib non-free" 
 		aaa_debootstrap_opts="('--variant=buildd' '--keyring=$aaa_kali_keyring' '--include=kali-archive-keyring')" ;;
 	testing) aaa_mirror="$aaa_deb_mirror" 
-		aaa_pkg_tag="$aaa_pkg_tag_testing"
 		aaa_debootstrap_opts="('--variant=buildd' '--keyring=$aaa_deb_keyring')" 
 		aaa_base_components="main contrib non-free" ;;
 	stable) aaa_mirror="$aaa_deb_mirror" 
 		aaa_debootstrap_opts="('--variant=buildd' '--keyring=$aaa_deb_keyring')" 
-		aaa_pkg_tag="$aaa_pkg_tag_stable"
 		aaa_base_components="main contrib non-free" ;;
 	unstable) aaa_mirror="$aaa_deb_mirror" 
-		aaa_pkg_tag="$aaa_pkg_tag_unstable"
 		aaa_debootstrap_opts="('--variant=buildd' '--keyring=$aaa_deb_keyring')"
 		aaa_base_components="main contrib non-free" ;;
 	ubuntu) aaa_mirror="$aaa_ubuntu_mirror" 
-		aaa_pkg_tag="$aaa_pkg_tag_ubuntu"
 		aaa_extra_packages="$aaa_extra_packages ubuntu-archive-keyring" 
 		aaa_debootstrap_opts="('--variant=buildd' '--keyring=$aaa_ubuntu_keyring' '--include=ubuntu-archive-keyring')"
 		aaa_base_components="main restricted universe multiverse" ;;
@@ -627,20 +605,13 @@ UpdateBase
 
 }
 
-function ActivateRepo() {
-	
-	#$1 repo base dit
-	#$2 codenames
-	#$3 package download url
+function ActivateWorkRepo() {
 	
 	#create repro dir struture by downloading , installing,  package
-	Block "fill $1 repo"
+	Block "fill work repo"
 	cd "$aaa_work_dir"
-	DownLoad "$3"
-	for codename in $2; do
-		#	reprepro -b "$aaa_work_repo_dir" list work *.deb
-		reprepro -b "$1" includedeb  $codename *.deb > /dev/null 2>&1
-	done
+	DownLoad "http://dk.archive.ubuntu.com/ubuntu/pool/main/u/ubuntu-keyring/ubuntu-keyring_2012.05.19_all.deb"
+	reprepro -b "$aaa_work_repo_dir" includedeb work *.deb > /dev/null 2>&1
 	rm -rf *.deb
 	cd $HOME
 
@@ -648,75 +619,80 @@ function ActivateRepo() {
 
 function WriteRepo()
 {
-	#$1 repo base dir
-	#$2 list of codenames
-	#$3 list of arches
-	#$4 delete contents of repo dir before writing new
+	#$1 repo local name
+	#$2 delete contents of repo dir before writing new
 	
-	if [[ $4 == "-r" ]]; then
-		Warn "repo cleaning was requested about to scrub the contents of $1 "
+	case "$1" in
+		$aaa_home_repo_codename) local arches="Architectures: i386 amd64 armel armhf"
+				local dir_path="$aaa_home_repo_dir"
+				local comps="Components: unstable unstablegit kali kaligit" ;;
+				
+		$aaa_git_repo_codename) local arches="Architectures: i386 amd64 armel armhf source"
+				local dir_path="$aaa_git_repo_dir"
+				local comps="Components: unstable unstablegit kali kaligit" ;;
+				
+		$aaa_work_repo_codename) local arches="Architectures: amd64"
+				local dir_path="$aaa_work_repo_dir"
+				local comps="Components: main" ;;
+	esac
+	
+	if [[ -z "$aaa_sign_key" ]]; then
+		local sign_with_marker=""
+		local pass_phrase_marker=""
+	else
+		local sign_with_marker="SignWith: $aaa_sign_key"
+		local pass_phrase_marker="ask-passphrase"
+	fi
+	
+	
+	
+	if [[ $2 == yes ]]; then
+		Warn "repo cleaning was requested about to scrub the contents of $dir_path "
 		AnyKey
-		Test cd "$1" 
+		Test cd "$dir_path" 
 		Test rm -fr `ls -d */`
 	fi
-	MakeADir "$1/conf"
+	MakeADir "$dir_path/conf"
 	
-if [[ -e "$1/conf/distributions" ]]; then
-	Warn "$1/conf/distributions already exists"
+if [[ -e "$dir_path/conf/distributions" ]]; then
+	Warn "$dir_path/conf/distributions already exists"
 	Warn "backing up original and writing new"
-	mv "$1/conf/distributions"  "$1/conf/distributions.backup"
-	echo "#config writen by aaa, original config saved to $1/conf/distributions.back " > "$1/conf/distributions"
+	mv "$dir_path/conf/distributions"  "$dir_path/conf/distributions.backup"
+	echo "#config writen by aaa, original config saved to $dir_path/conf/distributions.back " > "$dir_path/conf/distributions"
 else
 
-	Info "writing new $1/conf/distributions"
-	echo "#config writen by aaa, feel free to modify but dont fuck anything ! " > "$1/conf/distributions"
+	Info "writing new $dir_path/conf/distributions"
+	echo "#config writen by aaa, feel free to modify but dont fuck anything ! " > "$dir_path/conf/distributions"
 fi
 
-
-aaa_tmp=""
-for codename in $2; do
-	case "$codename" in
-		unstable) aaa_suite="Suite: sid" ;;
-		testing) aaa_suite="Suite: jessie" ;;
-		kali) aaa_suite="Suite: wheezy" ;;
-		saucy) aaa_suite="Suite: ubuntu" ;;
-		*) aaa_suite="Suite: experimental" ;;		
-	esac
-
-	aaa_tmp=("Origin: aaa.$codename.org
-Label: aaa-$codename-local-repo
-Codename: $codename
-$aaa_suite
+echo "Origin: aaa.$1.org
+Label: aaa-$1-local-repo
+Codename: $1
+Suite: $aaa_default_distro
 Version: 1.0
-Architectures: $3
-Components: main
-Description: local custom repo for $codename packages
-$sign_with_marker
+$arches
+$comps
+Description: local custom repo for $1 packages
+$sign_with_marker" >> "$dir_path/conf/distributions"
 
-$aaa_tmp")
-done
+Block "writing $dir_path/conf/options"
 
-Test echo "$aaa_tmp" > "$1/conf/distributions"
-
-Block "writing $1/conf/options"
-
-if [[ -e "$1/conf/options" ]]; then
-	Warn "$1/conf/options already exists"
+if [[ -e "$dir_path/conf/options" ]]; then
+	Warn "$dir_path/conf/options already exists"
 	Warn "backing up original and writing new"
-	mv "$1/conf/options"  "$1/conf/options.backup"
-	echo "#config writen by aaa, original config saved to $1/conf/options.back " > "$1/conf/options"
+	mv "$dir_path/conf/options"  "$dir_path/conf/options.backup"
+	echo "#config writen by aaa, original config saved to $dir_path/conf/options.back " > "$dir_path/conf/options"
 else
 
-	Info "writing new $1/conf/options"
-	echo "#config writen by aaa, feel free to modify but dont fuck anything ! " > "$1/conf/options"
+	Info "writing new $dir_path/conf/options"
+	echo "#config writen by aaa, feel free to modify but dont fuck anything ! " > "$dir_path/conf/options"
 fi
 Test echo "verbose
-basedir $1
-$PassPhraseMarker" >> "$1/conf/options"
+basedir $dir_path
+$pass_phrase_marker" >> "$dir_path/conf/options"
 
-reprepro -b "$1" createsymlinks $2
+reprepro -b "$dir_path" createsymlinks "$1"
 	
 }
-
 
 

@@ -1,0 +1,230 @@
+#!/bin/bash
+
+################ common header identical except for usage, getopts etc #########################################################################################################
+
+# Avoid any encoding problems
+export LANG=C
+
+# check if messages are to be printed using color
+unset txtrst txtbld bldblu bldgrn bldred bldylw
+if [[ -t 2 ]]; then
+	# prefer terminal safe colobldred and bold text when tput is supported
+	if tput setaf 0 &>/dev/null; then
+		txtrst="$(tput sgr0)"
+		txtbld="$(tput bold)"
+		bldblu="${txtbld}$(tput setaf 4)"
+		bldgrn="${txtbld}$(tput setaf 2)"
+		bldred="${txtbld}$(tput setaf 1)"
+		bldylw="${txtbld}$(tput setaf 3)"
+		bldpur="${txtbld}$(tput setaf 5)"
+		bldcyn="${txtbld}$(tput setaf 6)"
+		bldwht="${txtbld}$(tput setaf 7)"
+		txtblu="$(tput setaf 4)"
+		txtgrn="$(tput setaf 2)"
+		txtred="$(tput setaf 1)"
+		txtpur="$(tput setaf 5)"
+		txtylw="$(tput setaf 3)"
+		txtcyn="$(tput setaf 6)"
+		txtwht="$(tput setaf 7)"
+	else
+		txtrst="\e[1;0m"
+		txtbld="\e[1;1m"
+		bldblu="${txtbld}\e[1;34m"
+		bldgrn="${txtbld}\e[1;32m"
+		bldred="${txtbld}\e[1;31m"
+		bldylw="${txtbld}\e[1;33m"
+		bldpur="${txtbld}\e[1;35m" # purple
+		bldcyn="${txtbld}\e[1;36m" # cyan
+		bldwht="${txtbld}\e[1;37m" # white
+		txtred='\e[0;31m' # red
+		txtgrn='\e[0;32m' # green
+		txtylw='\e[0;33m' # yellow
+		txtblu='\e[0;34m' # blue
+		txtpur='\e[0;35m' # purple
+		txtcyn='\e[0;36m' # cyan
+		txtwht='\e[0;37m' # white
+	fi
+fi
+readonly txtrst txtbld bldblu bldgrn bldred bldylw txtred txtgrn txtylw txtblu txtpur txtcyn txtwht
+
+
+cd "$HOME"
+
+Usage() {
+  cat <<EOF
+usage: ${0##*/} [options] </path/to/pkg/dir>
+   
+   -l < list all gits from selected github page
+    to the current dir >
+    
+   -c < clone all gits from selected github page
+    to the current dir >
+    
+   -w < wipe work repo >
+    
+   -s < read the status of all gits in the current dir >
+   
+   -g < read the status of all gits github repo dir >
+    
+   -t < test the build function >
+   
+   -a < auto build do not stop for errors >
+    
+   -b < build all git do checks along thre way>
+   
+   -p < check each git for package build correct>
+   
+   
+  This script performs various git admin actions
+  
+
+EOF
+}
+
+
+
+if [[ $1 = @(-h|--help) ]]; then
+  Usage
+  exit 1
+fi
+
+# get options and arguments http://wiki.bash-hackers.org/howto/getopts_tutorial
+
+while getopts ":atsglcbp" opt; do
+  case $opt in
+	a) auto=1 ;;
+	t) test=1 ;;
+	s) status=1 
+		git=0;;
+	g) status=1 
+		git=1;;
+	l) list=1 ;;
+	c) clone=1 ;;
+	b) build=1 ;;
+	p) build_check=1 ;;
+   \?) echo -e "Invalid option: -$OPTARG" ;;
+    :) echo -e "Option -$OPTARG requires a github account name" ;;
+  esac
+done
+#shift the options and args out the way http://wiki.bash-hackers.org/howto/getopts_tutorial
+shift $((OPTIND-1))
+#and lets parse it
+#use substitution to set default jubeie
+#var=${parameter:-defaultValue}
+g_name=${1:-Jubei-Mitsuyoshi}
+
+
+####################################################################################
+#vars
+
+repo_dir="$HOME/git/github"
+repo_dir_list="$HOME/git/github/aaa-debian-repo $HOME/aaa-home-repo"
+
+####################################################################################
+
+
+if [[ $list -eq 1 ]]; then
+	lynx -dump -listonly "https://github.com/$g_name"?tab=repositories | grep 'stargazers' | sed -r 's/^.{6}//' | sed 's/\/stargazers//' || echo "lynx failed to get list, either internet glitch or nonexistant gihub account name passed "
+	#lynx -dump -listonly https://github.com/Jubei-Mitsuyoshi?tab=repositories | grep 'stargazers' | sed -r 's/^.{6}//' | sed 's/\/stargazers//' || echo "lynx failed to get list, internet glitch "
+	exit 0
+fi
+
+if [[ $clone -eq 1 ]]; then
+	for repo_url in `lynx -dump -listonly "https://github.com/$g_name"?tab=repositories | grep 'stargazers' | sed -r 's/^.{6}//' | sed 's/\/stargazers//'`; do
+		repo_name=$(sed "s/https:\/\/github.com\/$g_name\///" $repo_url)
+		Test git clone "$repo_url".git
+	done
+	exit 0
+fi
+
+
+if [[ $status -eq 1 ]]; then
+	[[ git=1 ]] && cd "$repo_dir"
+	git_list=$(ls -d aaa*)
+	echo $git_list
+	for aaa_dir in $git_list; do
+		[[ $aaa_dir == "aaa-debian-repo"* ]] && continue
+		cd "$repo_dir/$aaa_dir"
+		if [[ ! -r "$repo_dir/$aaa_dir/README.md" ]]; then
+			echo -e "${bldblu}$repo_dir/$aaa_dir ------------->  no README.md${txtrst}"
+			echo -e "any key to continue"
+			read -n1 -s
+		else
+			status=$(grep 'STATUS:' "$repo_dir/$aaa_dir/README.md")
+			if [[ $status == "" ]]; then
+				echo -e "${bldblu}$repo_dir/$aaa_dir ------------->  status info missing${txtrst}"
+				echo -e "any key to continue"
+				read -n1 -s
+			else
+				echo "${txtbld}$aaa_dir $status${txtrst}"
+			fi
+		fi
+	done
+fi
+
+
+if [[ $build -eq 1 || $test -eq 1 || $auto -eq 1 ]]; then
+	cd "$repo_dir"
+	git_list=$(ls -d aaa*)
+	for aaa_dir in $git_list; do
+		[[ $aaa_dir == "aaa-debian-repo"* ]] && continue
+		cd "$repo_dir/$aaa_dir"
+		[[ "$aaa_dir" == aaa-debian-repo ]] && continue
+		if [[ ! -r "$repo_dir/$aaa_dir/README.md" ]]; then
+			echo -e "${bldblu}$repo_dir/$aaa_dir ------------->  no README.md${txtrst}"
+			echo -e "any key to continue"
+			[[ $auto -ne 1 ]] && read -n1 -s
+			continue
+		fi
+		status=$(grep 'STATUS:' "$repo_dir/$aaa_dir/README.md")
+		#echo "$status"
+		if [[ $status == "" ]]; then
+			echo -e "${bldblu}$repo_dir/$aaa_dir ------------->  status info missing${txtrst}"
+			echo -e "any key to continue"
+			[[ $auto -ne 1 ]] && read -n1 -s
+			continue
+		fi
+		
+		# grep sed to check can be built from readme
+		if [[ $(grep 'STATUS:' "$repo_dir/$aaa_dir/README.md" | grep 'packaged') != "" ]]; then
+			result=""
+			result=$(reprepro -Vb "$HOME/aaa-home-repo" listmatched "home" "*${aaa_dir#aaa-*}*")$(reprepro -Vb "$HOME/git/github/aaa-debian-repo" listmatched "public" "*${aaa_dir#aaa-*}*")
+					
+			if [[ $result != "" ]]; then
+				echo -e "${aaa_dir#aaa-*} package exists somewhere sure you want to rebuild again ?"
+				echo -e "#########################################################################"
+				echo -e "${txtbld}$result${txtrst}"
+				if [[ $auto -ne 1 ]]; then 
+					echo -e "s to skip build any other key to rebuild\n"
+					read -s -n1 aaa_tmpchr
+					[[ $aaa_tmpchr == s ]] && continue
+				fi
+			fi
+			cd "$repo_dir/$aaa_dir"
+			# cd into target dir, gerp distro and build for that distro
+			cd $(ls -d */)
+			distro_name=$(dpkg-parsechangelog --show-field Distribution)
+			cd ..
+			if [[ $build_check -ne 1 ]]; then
+				case $distro_name in 
+					kali) if [[ $test -ne 1 ]]; then
+							(aaa-build -lgd $distro_name $(ls -d */))
+							wait
+						else
+							echo -e "would have built $repo_dir/$aaa_dir for disro $distro_name since status is $status" 
+						fi ;;
+					*) if [[ $test -ne 1 ]]; then
+							(aaa-build -lg $(ls -d */))
+							wait
+						else
+							echo -e "would have built $repo_dir/$aaa_dir for disro $distro_name since status is $status" 
+						fi ;;
+				esac
+				
+			else
+				(aaa-build -c $(ls -d */))
+				wait
+			fi
+		fi
+	done
+fi

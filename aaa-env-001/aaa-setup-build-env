@@ -14,7 +14,7 @@ Usage() {
    usage: ${0##*/} [options]
    
   [options]
-  -r < remove ie delete repo directories
+  -p < purge ie delete repo directories
   before setting up again"
   
   it writes /etc/pbuilderrc as a default
@@ -64,9 +64,9 @@ else
 	Fuck "Failed to find master config file quitting"
 fi
 
-while getopts ":r" opt; do
+while getopts ":p" opt; do
   case $opt in
-	r) remove="-r" ;;
+	p) purge=yes ;;
    \?) Fuck "Invalid option: -$OPTARG" ;;
   esac
 done
@@ -113,7 +113,7 @@ DEBBUILDOPTS=\"$aaa_buildopts\"
 DEBOOTSTRAPOPTS=$aaa_debootstrap_opts
 BUILDUSERNAME=\"\"
 AUTO_DEBSIGN=no
-DISTRIBUTION=$aaa_debian_distro
+DISTRIBUTION=$aaa_default_distro
 APTCACHEHARDLINK=$aaa_hardlink
 BASETGZ=\"$aaa_base_gz_dir/$aaa_base_gz\"
 BUILDPLACE=\"$aaa_build_location\"" >> "/etc/pbuilderrc" || Fuck "failed to append to existing master pbuildrc exiting"
@@ -126,25 +126,15 @@ BUILDPLACE=\"$aaa_build_location\"" >> "/etc/pbuilderrc" || Fuck "failed to appe
 
 Block "writing $aaa_home_repo_dir/conf/distributions"
 
-if [[ -z "$aaa_sign_key" ]]; then
-	sign_with_marker=""
-	PassPhraseMarker=""
-else
-	sign_with_marker="SignWith: $aaa_sign_key"
-	PassPhraseMarker="ask-passphrase"
-fi
 
-for repo_dir in $aaa_repo_dir_list; do
-		case "$repo_dir" in
-		$aaa_home_repo_dir) WriteRepo "$repo_dir" "$aaa_home_codenames" "i386 amd64 armel armhf" $remove 
-							ActivateRepo "$repo_dir" "$aaa_home_codenames" "http://ftp.dk.debian.org/debian/pool/main/x/xinit/xinit_1.3.2-1_amd64.deb" ;;
-		$aaa_work_repo_dir) WriteRepo "$repo_dir" "$aaa_work_codenames" "i386 amd64 armel armhf" $remove 
-							ActivateRepo "$repo_dir" "$aaa_work_codenames" "http://dk.archive.ubuntu.com/ubuntu/pool/main/u/ubuntu-keyring/ubuntu-keyring_2012.05.19_all.deb" ;;
-		$aaa_git_repo_dir) WriteRepo "$repo_dir" "$aaa_git_codenames" "i386 amd64 source armel armhf" $remove 
-							ActivateRepo "$repo_dir" "$aaa_git_codenames" "http://ftp.dk.debian.org/debian/pool/main/x/xinit/xinit_1.3.2-1_amd64.deb";;
-#		$aaa_extra_repo_dir) WriteRepo "$repo_dir" "$aaa_extra_codenames" ;;	
-	esac
-done
+
+
+
+WriteRepo "$aaa_home_repo_codename" $purge
+WriteRepo "$aaa_git_repo_codename" $purge
+WriteRepo "$aaa_work_repo_codename" $purge
+ActivateWorkRepo
+
 
 
 
@@ -155,7 +145,7 @@ if [[ -e "/etc/apt/sources.list.d/pbuilder_local.list" ]]; then
 	Warn "./etc/apt/sources.list.d/pbuilder_local.list already exists"
 	Warn "overwriting"
 fi
-echo "deb [trusted=yes] file://$aaa_home_repo_dir $aaa_debian_distro main" > "/etc/apt/sources.list.d/pbuilder_local.list" || Fuck "failed to write to /etc/apt/sources.list.d/pbuilder_local.list exiting "
+echo "deb [trusted=yes] file://$aaa_home_repo_dir $aaa_default_distro unstable unstablegit kali kaligit" > "/etc/apt/sources.list.d/pbuilder_local.list" || Fuck "failed to write to /etc/apt/sources.list.d/pbuilder_local.list exiting "
 
 
 Block "create pbuilder base immage"
