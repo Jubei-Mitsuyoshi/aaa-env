@@ -365,14 +365,6 @@ fi
 
 }
 
-function ListDebs()
-{
-cd debian
-echo $(grep "Package" ./debian/control | sed 's/Package: //')
-
-
-}
-
 
 function UpdateReadme()
 {
