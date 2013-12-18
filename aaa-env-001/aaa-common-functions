@@ -617,11 +617,11 @@ function WriteRepo()
 	case "$1" in
 		$aaa_home_repo_codename) local arches="Architectures: i386 amd64 armel armhf"
 				local dir_path="$aaa_home_repo_dir"
-				local comps="Components: unstable unstablegit kali kaligit" ;;
+				local comps="Components: unstable unstablegit kali kaligit testing testinggit" ;;
 				
 		$aaa_git_repo_codename) local arches="Architectures: i386 amd64 armel armhf source"
 				local dir_path="$aaa_git_repo_dir"
-				local comps="Components: unstable unstablegit kali kaligit" ;;
+				local comps="Components: unstable unstablegit kali kaligit testing testinggit" ;;
 				
 		$aaa_work_repo_codename) local arches="Architectures: amd64"
 				local dir_path="$aaa_work_repo_dir"

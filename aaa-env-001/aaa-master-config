@@ -125,7 +125,7 @@ aaa_extra_build_opts="-sa -us -uc"
 ###############################
 #
 #space delimited list
-aaa_extra_packages="apt-utils"
+aaa_extra_packages="apt-utils eatmydata"
 ###############################
 
 ########################################################################
